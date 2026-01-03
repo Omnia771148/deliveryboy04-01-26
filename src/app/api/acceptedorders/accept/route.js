@@ -26,7 +26,7 @@ export async function POST(req) {
       );
     }
 
-    // 2️⃣ Insert into acceptedbydeliveries (NEW COLLECTION)
+    // 2️⃣ Insert into acceptedbydeliveries with ALL fields
     await AcceptedByDelivery.create({
       originalOrderId: order._id,
       orderId: order.orderId,
@@ -38,21 +38,36 @@ export async function POST(req) {
       items: order.items,
       totalCount: order.totalCount,
       totalPrice: order.totalPrice,
+      gst: order.gst,
+      deliveryCharge: order.deliveryCharge,
+      grandTotal: order.grandTotal,
+      aa: order.aa,
+
+      location: order.location,
+
+      paymentStatus: order.paymentStatus,
+      razorpayOrderId: order.razorpayOrderId,
+      razorpayPaymentId: order.razorpayPaymentId,
+
+      orderDate: order.orderDate,
+      rest: order.rest,
+      rejectedBy: order.rejectedBy,
 
       status: "Accepted by Delivery",
     });
 
-    // 3️⃣ Update status in acceptedorders instead of deleting
-    order.status = "Accepted by Delivery"; // ✅ change status
-    await order.save(); // ✅ save the updated order
+    // 3️⃣ DELETE from acceptedorders (THIS IS THE KEY FIX)
+    await AcceptedOrder.findByIdAndDelete(orderId);
 
     return NextResponse.json({
-      message: "Order accepted and status updated successfully",
+      message: "Order accepted and removed from acceptedorders",
+      success: true,
     });
+
   } catch (error) {
     console.error("Accept order error:", error);
     return NextResponse.json(
-      { message: "Internal server error" },
+      { message: "Internal server error", error: error.message },
       { status: 500 }
     );
   }

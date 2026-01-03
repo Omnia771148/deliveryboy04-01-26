@@ -1,9 +1,18 @@
 import mongoose from "mongoose";
 
+// Schema for individual items
 const ItemSchema = new mongoose.Schema({
+  itemId: String,
   name: String,
   price: Number,
   quantity: Number,
+});
+
+// Schema for location
+const LocationSchema = new mongoose.Schema({
+  lat: Number,
+  lng: Number,
+  mapUrl: String,
 });
 
 const AcceptedOrderSchema = new mongoose.Schema({
@@ -14,6 +23,19 @@ const AcceptedOrderSchema = new mongoose.Schema({
   items: [ItemSchema],
   totalCount: Number,
   totalPrice: Number,
+  gst: Number,
+  deliveryCharge: Number,
+  grandTotal: Number,
+  aa: String,
+
+  location: LocationSchema,
+
+  paymentStatus: {
+    type: String,
+    default: "Pending",
+  },
+  razorpayOrderId: String,
+  razorpayPaymentId: String,
 
   orderDate: {
     type: Date,
@@ -26,12 +48,12 @@ const AcceptedOrderSchema = new mongoose.Schema({
   },
 
   deliveryBoyId: {
-    type: String, // can be ObjectId later
+    type: String,
     default: null,
   },
 
   rejectedBy: {
-    type: [String], // deliveryBoy IDs
+    type: [String],
     default: [],
   },
 

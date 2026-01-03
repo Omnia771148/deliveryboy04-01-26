@@ -19,12 +19,13 @@ export async function POST(req) {
       { _id: orderId },
       {
         $addToSet: {
-          "items.$[].rejectedBy": deliveryBoyId,
+          rejectedBy: deliveryBoyId, // ✅ FIX
         },
       }
     );
 
     return NextResponse.json({ success: true });
+
   } catch (err) {
     console.error(err);
     return NextResponse.json(
