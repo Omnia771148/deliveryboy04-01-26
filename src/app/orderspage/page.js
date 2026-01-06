@@ -7,6 +7,12 @@ export default function AcceptedOrders() {
   const [orders, setOrders] = useState([]);
   const [filteredOrders, setFilteredOrders] = useState([]);
   const [loading, setLoading] = useState(true);
+  // LOGIC ADDED: State to track if driver is already busy
+  const [hasActiveDelivery, setHasActiveDelivery] = useState(false);
+
+  // ✅ FIXED LOGIC: Moved inside the component so 'orders' is defined
+  const currentUserId = typeof window !== "undefined" ? localStorage.getItem("userId") : null;
+  const hasActiveOrder = orders.some(o => o.deliveryBoyId === currentUserId && o.status !== "Delivered");
 
   useEffect(() => {
     const fetchOrders = async () => {
@@ -19,6 +25,15 @@ export default function AcceptedOrders() {
           setFilteredOrders([]);
           setLoading(false);
           return;
+        }
+
+        // LOGIC ADDED: Call your Accepted Deliveries API
+        const activeRes = await fetch("/api/accepted-deliveries");
+        const activeData = await activeRes.json();
+        if (activeData.success) {
+           // If any order in the list belongs to this driver, they are busy
+           const isBusy = activeData.data.some(d => d.deliveryBoyId === deliveryBoyId);
+           setHasActiveDelivery(isBusy);
         }
 
         const res = await fetch(
@@ -64,17 +79,26 @@ export default function AcceptedOrders() {
       return;
     }
 
+    // LOGIC ADDED: Prevent acceptance if already busy
+    if (hasActiveDelivery || hasActiveOrder) {
+       alert("Finish your active order first!");
+       return;
+    }
+
     try {
       const res = await fetch("/api/acceptedorders/accept", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ orderId, deliveryBoyId }),
       });
-
+      const serverData = await res.json();
       if (!res.ok) {
-        alert("Order already accepted or failed");
+        alert(serverData.message || "Order already accepted or failed");
+        // Remove from list immediately if someone else took it
+        setFilteredOrders((prev) => prev.filter((o) => o._id !== orderId));
         return;
       }
+     
 
       // Update both orders states
       setOrders((prev) => prev.filter((o) => o._id !== orderId));
@@ -121,11 +145,19 @@ export default function AcceptedOrders() {
       <div className="text-lg">Loading orders...</div>
     </div>
   );
- if (loading) return <Loading />;
+  if (loading) return <Loading />;
   return (
     <AuthWrapper>
     <div className="min-h-screen bg-gray-50 p-4 md:p-6">
       <div className="max-w-7xl mx-auto">
+        
+        {/* LOGIC ADDED: Visual alert */}
+        {(hasActiveDelivery || hasActiveOrder) && (
+          <div className="bg-red-600 text-white p-4 rounded-lg mb-6 font-bold text-center">
+            ⚠️ ACTIVE DELIVERY IN PROGRESS. FINISH IT TO ACCEPT NEW ORDERS.
+          </div>
+        )}
+
         <div className="mb-8">
           <h1 className="text-3xl font-bold text-gray-900">Available Orders</h1>
           <p className="text-gray-600 mt-2">
@@ -209,7 +241,7 @@ export default function AcceptedOrders() {
                         <p className="text-2xl font-bold text-gray-900">
                           {formatCurrency(order.grandTotal)}
                         </p>
-                        <p className="text-sm text-gray-600">Total</p>
+                      <p className="text-sm text-gray-600">Total</p>
                       </div>
                     </div>
                   </div>
@@ -389,10 +421,16 @@ export default function AcceptedOrders() {
                           </button>
                           <button
                             onClick={() => acceptOrder(order._id)}
-                            className="px-6 py-2 bg-gradient-to-r from-green-500 to-emerald-600 text-white font-semibold rounded-lg hover:opacity-90 transition-opacity duration-200 flex items-center shadow-md"
+                            // Logic added: visually and functionally disable
+                            disabled={hasActiveDelivery || hasActiveOrder}
+                            className={`px-6 py-2 font-semibold rounded-lg shadow-md flex items-center transition-all ${
+                              (hasActiveDelivery || hasActiveOrder)
+                                ? "bg-gray-400 cursor-not-allowed opacity-70" 
+                                : "bg-gradient-to-r from-green-500 to-emerald-600 text-white hover:opacity-90"
+                            }`}
                           >
                             <span className="mr-2">✓</span>
-                            Accept Delivery
+                            {(hasActiveDelivery || hasActiveOrder) ? "Finish Active Order First" : "Accept Delivery"}
                           </button>
                         </div>
                       </div>
